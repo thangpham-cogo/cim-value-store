@@ -65,5 +65,5 @@ defmodule Cim.MemoryStore do
     {:noreply, next_state}
   end
 
-  defp new_store(), do: %{}
+  defp new_store(), do: StoreLogics.new()
 end

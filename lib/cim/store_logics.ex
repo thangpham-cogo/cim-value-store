@@ -8,6 +8,9 @@ defmodule Cim.StoreLogics do
   @type put_response :: {:ok, Store.t()}
   @type delete_response :: {:ok, Store.t()}
 
+  @spec new() :: Store.t()
+  def new(), do: %{}
+
   @spec get(Store.t(), database :: String.t(), key :: String.t()) :: get_response
   def get(store, database, key) do
     case get_in(store, [database, key]) do
