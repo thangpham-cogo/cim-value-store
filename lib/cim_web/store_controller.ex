@@ -5,13 +5,13 @@ defmodule CimWeb.StoreController do
 
   import Plug.Conn
 
-  alias Cim.LuaInterpreter
+  alias Cim.{LuaInterpreter, MemoryStore}
 
-  @spec get(Plug.Conn.t(), atom) :: Plug.Conn.t()
-  def get(conn, store \\ store()) do
+  @spec get(Plug.Conn.t()) :: Plug.Conn.t()
+  def get(conn) do
     %{"database" => database, "key" => key} = conn.params
 
-    case store.get(database, key) do
+    case MemoryStore.get(database, key) do
       {:ok, value} ->
         conn
         |> put_resp_header("content-type", "application/octet-stream")
@@ -22,41 +22,41 @@ defmodule CimWeb.StoreController do
     end
   end
 
-  @spec put(Plug.Conn.t(), atom) :: Plug.Conn.t()
-  def put(conn, store \\ store()) do
+  @spec put(Plug.Conn.t()) :: Plug.Conn.t()
+  def put(conn) do
     {:ok, body, _} = read_body(conn)
     %{"database" => database, "key" => key} = conn.params
-    :ok = store.put(database, key, body)
+    :ok = MemoryStore.put(database, key, body)
 
     send_resp(conn, 200, "")
   end
 
-  @spec delete_database(Plug.Conn.t(), atom) :: Plug.Conn.t()
-  def delete_database(conn, store \\ store()) do
-    case store.drop_database(Map.fetch!(conn.params, "database")) do
+  @spec delete_database(Plug.Conn.t()) :: Plug.Conn.t()
+  def delete_database(conn) do
+    case MemoryStore.drop_database(Map.fetch!(conn.params, "database")) do
       :ok -> send_resp(conn, 200, "")
       {:error, :not_found} -> not_found(conn)
     end
   end
 
-  @spec delete_key(Plug.Conn.t(), atom) :: Plug.Conn.t()
-  def delete_key(conn, store \\ store()) do
+  @spec delete_key(Plug.Conn.t()) :: Plug.Conn.t()
+  def delete_key(conn) do
     %{"database" => database, "key" => key} = conn.params
 
-    case store.drop_key(database, key) do
+    case MemoryStore.drop_key(database, key) do
       {:ok, value} when not is_nil(value) -> send_resp(conn, 200, "")
       {:ok, nil} -> not_found(conn)
       {:error, :not_found} -> not_found(conn)
     end
   end
 
-  @spec post(Plug.Conn.t(), atom) :: Plug.Conn.t()
-  def post(conn, store \\ store()) do
+  @spec post(Plug.Conn.t()) :: Plug.Conn.t()
+  def post(conn) do
     {:ok, script, _} = read_body(conn)
 
     database = Map.fetch!(conn.params, "database")
 
-    with true <- store.has_database?(database),
+    with true <- MemoryStore.has_database?(database),
          {:ok, value} <- LuaInterpreter.eval(database, script) do
       conn
       |> put_req_header("content-type", "application/octet-stream")
@@ -80,6 +80,4 @@ defmodule CimWeb.StoreController do
   end
 
   defp not_found(conn), do: send_resp(conn, 404, "")
-
-  defp store(), do: Application.get_env(:cim, :store, Cim.MemoryStore)
 end

@@ -10,8 +10,8 @@ defmodule Cim.StoreLogics do
   @doc """
   Retrieves a value under a given key and database. Error out if database or key does not exist
   """
-  @spec get(Store.t(), database :: String.t(), key :: String.t()) ::
-          {:ok, value :: binary} | {:error, :not_found}
+  @spec get(Store.t(), Store.database(), Store.key()) ::
+          {:ok, Store.value()} | {:error, :not_found}
   def get(store, database, key) do
     case store do
       %{^database => %{^key => value}} -> {:ok, value}
@@ -22,7 +22,7 @@ defmodule Cim.StoreLogics do
   @doc """
   Stores a value under the given database and key. Will create in place if either database/key does not exist
   """
-  @spec put(Store.t(), database :: String.t(), key :: String.t(), value :: binary) ::
+  @spec put(Store.t(), Store.database(), Store.key(), Store.value()) ::
           {:ok, Store.t()}
   def put(store, database, key, value) do
     updated_store =
@@ -37,7 +37,7 @@ defmodule Cim.StoreLogics do
   @doc """
   Removes a database. Will error if database does not exist
   """
-  @spec delete(Store.t(), database :: String.t()) :: {:ok, Store.t()} | {:error, :not_found}
+  @spec delete(Store.t(), Store.database()) :: {:ok, Store.t()} | {:error, :not_found}
   def delete(store, database) do
     case Map.has_key?(store, database) do
       true -> {:ok, Map.delete(store, database)}
@@ -49,8 +49,8 @@ defmodule Cim.StoreLogics do
   Removes a key under a database. Returns the deleted value or nil if key does not exist
   Returns error tuple if database not found
   """
-  @spec delete(Store.t(), database :: String.t(), key :: String.t()) ::
-          {:ok, {value :: binary, store :: Store.t()}} | {:error, :not_found}
+  @spec delete(Store.t(), Store.database(), Store.key()) ::
+          {:ok, {Store.value(), store :: Store.t()}} | {:error, :not_found}
   def delete(store, database, key) do
     case store do
       %{^database => %{^key => value}} ->
@@ -64,6 +64,6 @@ defmodule Cim.StoreLogics do
     end
   end
 
-  @spec has_database?(Store.t(), String.t()) :: boolean
+  @spec has_database?(Store.t(), Store.database()) :: boolean
   def has_database?(store, database), do: Map.has_key?(store, database)
 end

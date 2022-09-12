@@ -4,9 +4,9 @@ defmodule Cim.LuaInterpreter do
   """
 
   @namespace "cim"
-  alias Cim.LuaStore
+  alias Cim.{Store, LuaStore}
 
-  @spec eval(database :: String.t(), script :: binary) ::
+  @spec eval(Store.database(), script :: binary) ::
           {:error, :syntax_error | {:internal_error, any} | {:runtime_error, any}} | {:ok, any}
   def eval(database, script) when is_binary(database) do
     with {:ok, state} <- init(database),

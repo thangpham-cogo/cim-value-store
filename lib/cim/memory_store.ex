@@ -1,11 +1,3 @@
-defmodule Cim.Store do
-  @moduledoc """
-  Store type definition
-  """
-
-  @type t() :: %{any => %{any => binary}}
-end
-
 defmodule Cim.MemoryStore do
   @moduledoc """
   A gen server for holding the store, dispatching client requests to and passing back response from StoreLogics
