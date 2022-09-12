@@ -3,7 +3,7 @@ defmodule Cim.Store do
   Store type definition
   """
 
-  @type t() :: %{String.t() => %{String.t() => binary()}}
+  @type t() :: %{any => %{any => binary()}}
 end
 
 defmodule Cim.MemoryStore do
@@ -14,53 +14,77 @@ defmodule Cim.MemoryStore do
 
   alias Cim.StoreLogics
 
+  @behaviour Cim.StoreBehavior
+
   def start_link(_opts) do
     GenServer.start_link(__MODULE__, nil, name: __MODULE__)
   end
 
-  @impl true
+  @impl GenServer
   def init(nil) do
     {:ok, new_store()}
   end
 
+  @impl Cim.StoreBehavior
   def get(pid \\ __MODULE__, database, key) do
     GenServer.call(pid, {:get, [database, key]})
   end
 
+  @impl Cim.StoreBehavior
   def put(pid \\ __MODULE__, database, key, value) do
     GenServer.cast(pid, {:put, [database, key, value]})
   end
 
+  @impl Cim.StoreBehavior
   def drop_database(pid \\ __MODULE__, database) do
-    GenServer.cast(pid, {:delete, database})
+    GenServer.call(pid, {:delete, database})
   end
 
+  @impl Cim.StoreBehavior
   def drop_key(pid \\ __MODULE__, database, key) do
-    GenServer.cast(pid, {:delete, [database, key]})
+    GenServer.call(pid, {:delete, [database, key]})
   end
 
-  @impl true
+  @impl Cim.StoreBehavior
+  def has_database?(pid \\ __MODULE__, database) do
+    GenServer.call(pid, {:database_exists?, database})
+  end
+
+  @impl GenServer
   def handle_call({:get, [database, key]}, _from, state) do
     {:reply, StoreLogics.get(state, database, key), state}
   end
 
-  @impl true
+  @impl GenServer
+  def handle_call({:delete, [database, key]}, _from, state) do
+    case StoreLogics.delete(state, database, key) do
+      {:ok, {_deleted, next_state}} ->
+        {:reply, :ok, next_state}
+
+      {:error, :not_found} ->
+        {:reply, {:error, :not_found}, state}
+    end
+  end
+
+  @impl GenServer
+  def handle_call({:delete, database}, _from, state) do
+    case StoreLogics.delete(state, database) do
+      {:ok, next_state} ->
+        {:reply, :ok, next_state}
+
+      {:error, :not_found} ->
+        {:reply, {:error, :not_found}, state}
+    end
+  end
+
+  @impl GenServer
+  def handle_call({:database_exists?, database}, _from, state) do
+    {:reply, StoreLogics.has_database?(state, database), state}
+  end
+
+  @impl GenServer
   def handle_cast({:put, [database, key, value]}, state) do
     {:ok, next_state} = StoreLogics.put(state, database, key, value)
-
-    {:noreply, next_state}
-  end
-
-  @impl true
-  def handle_cast({:delete, [database, key]}, state) do
-    {:ok, next_state} = StoreLogics.delete(state, database, key)
-
-    {:noreply, next_state}
-  end
-
-  @impl true
-  def handle_cast({:delete, database}, state) do
-    {:ok, next_state} = StoreLogics.delete(state, database)
 
     {:noreply, next_state}
   end

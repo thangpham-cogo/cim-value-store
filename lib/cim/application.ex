@@ -6,15 +6,22 @@ defmodule Cim.Application do
 
   @impl true
   def start(_type, _args) do
-    children = [
-      Cim.MemoryStore
-    ]
+    port = port()
 
     opts = [strategy: :one_for_one, name: Cim.Supervisor]
 
+    children = [
+      Cim.MemoryStore,
+      {Plug.Cowboy, scheme: :http, plug: CimWeb.Router, options: [port: port]}
+    ]
+
     {:ok, pid} = Supervisor.start_link(children, opts)
-    Logger.info("Store Server started")
+    Logger.info("Key-Value Store Server listening on port #{port}")
 
     {:ok, pid}
+  end
+
+  defp port() do
+    Application.get_env(:cim, :port) |> String.to_integer()
   end
 end

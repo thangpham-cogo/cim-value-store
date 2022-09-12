@@ -4,23 +4,26 @@ defmodule Cim.StoreLogics do
   """
   alias Cim.Store
 
-  @type get_response :: {:ok, any} | {:error, :not_found}
-  @type put_response :: {:ok, Store.t()}
-  @type delete_response :: {:ok, Store.t()}
-
   @spec new() :: Store.t()
   def new(), do: %{}
 
-  @spec get(Store.t(), database :: String.t(), key :: String.t()) :: get_response
+  @doc """
+  Retrieves a value under a given key and database. Error out if database or key does not exist
+  """
+  @spec get(Store.t(), database :: String.t(), key :: String.t()) ::
+          {:ok, value :: binary()} | {:error, :not_found}
   def get(store, database, key) do
-    case get_in(store, [database, key]) do
-      nil -> {:error, :not_found}
-      value -> {:ok, value}
+    case store do
+      %{^database => %{^key => value}} -> {:ok, value}
+      _ -> {:error, :not_found}
     end
   end
 
+  @doc """
+  Stores a value under the given database and key. Will create in place if either database/key does not exist
+  """
   @spec put(Store.t(), database :: String.t(), key :: String.t(), value :: binary()) ::
-          put_response()
+          {:ok, Store.t()}
   def put(store, database, key, value) do
     updated_store =
       case Map.has_key?(store, database) do
@@ -31,19 +34,36 @@ defmodule Cim.StoreLogics do
     {:ok, updated_store}
   end
 
-  @spec delete(Store.t(), database :: String.t()) :: delete_response()
+  @doc """
+  Removes a database. Will error if database does not exist
+  """
+  @spec delete(Store.t(), database :: String.t()) :: {:ok, Store.t()} | {:error, :not_found}
   def delete(store, database) do
-    {:ok, Map.delete(store, database)}
+    case Map.has_key?(store, database) do
+      true -> {:ok, Map.delete(store, database)}
+      false -> {:error, :not_found}
+    end
   end
 
-  @spec delete(Store.t(), database :: String.t(), key :: String.t()) :: delete_response()
+  @doc """
+  Removes a key under a database. Returns the deleted value or nil if key does not exist
+  Returns error tuple if database not found
+  """
+  @spec delete(Store.t(), database :: String.t(), key :: String.t()) ::
+          {:ok, {value :: binary(), store :: Store.t()}} | {:error, :not_found}
   def delete(store, database, key) do
-    updated_store =
-      case Map.has_key?(store, database) do
-        true -> Map.update!(store, database, &Map.delete(&1, key))
-        false -> store
-      end
+    case store do
+      %{^database => %{^key => value}} ->
+        {:ok, {value, Map.update!(store, database, &Map.delete(&1, key))}}
 
-    {:ok, updated_store}
+      %{^database => _} ->
+        {:ok, {nil, store}}
+
+      _ ->
+        {:error, :not_found}
+    end
   end
+
+  @spec has_database?(Store.t(), String.t()) :: boolean
+  def has_database?(store, database), do: Map.has_key?(store, database)
 end
