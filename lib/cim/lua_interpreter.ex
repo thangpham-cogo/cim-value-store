@@ -12,7 +12,7 @@ defmodule Cim.LuaInterpreter do
     with {:ok, state} <- init(database),
          {:ok, chunk, next_state} <- :luerl.load(script, state),
          {:ok, result} when is_list(result) <- :luerl.eval(chunk, next_state) do
-      {:ok, to_elixir(result)}
+      {:ok, unwrap(result)}
     else
       # https://github.com/rvirding/luerl/blob/bc655178dc8f59f29199fd7df77a7c314c0f2e02/src/luerl_comp.erl#L301
       {:error, errors, warnings} when is_list(errors) and is_list(warnings) ->
@@ -53,7 +53,7 @@ defmodule Cim.LuaInterpreter do
     }
   end
 
-  defp to_elixir([]), do: ""
-  defp to_elixir([{:ok, value}]), do: value
-  defp to_elixir([result]), do: result
+  defp unwrap([]), do: ""
+  defp unwrap([{:ok, value}]), do: value
+  defp unwrap([result]), do: result
 end
