@@ -26,7 +26,7 @@ defmodule Cim.MixProject do
       {:mox, "~> 1.0.2"},
       {:plug_cowboy, "~> 2.0"},
       {:credo, "~> 1.6.6"},
-      {:dialyxir, "~> 1.0", only: [:dev], runtime: false}
+      {:dialyxir, "~> 1.0", only: [:dev, :test], runtime: false}
     ]
   end
 end
