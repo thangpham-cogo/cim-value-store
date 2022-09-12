@@ -11,7 +11,7 @@ defmodule Cim.StoreLogics do
   Retrieves a value under a given key and database. Error out if database or key does not exist
   """
   @spec get(Store.t(), database :: String.t(), key :: String.t()) ::
-          {:ok, value :: binary()} | {:error, :not_found}
+          {:ok, value :: binary} | {:error, :not_found}
   def get(store, database, key) do
     case store do
       %{^database => %{^key => value}} -> {:ok, value}
@@ -22,7 +22,7 @@ defmodule Cim.StoreLogics do
   @doc """
   Stores a value under the given database and key. Will create in place if either database/key does not exist
   """
-  @spec put(Store.t(), database :: String.t(), key :: String.t(), value :: binary()) ::
+  @spec put(Store.t(), database :: String.t(), key :: String.t(), value :: binary) ::
           {:ok, Store.t()}
   def put(store, database, key, value) do
     updated_store =
@@ -50,7 +50,7 @@ defmodule Cim.StoreLogics do
   Returns error tuple if database not found
   """
   @spec delete(Store.t(), database :: String.t(), key :: String.t()) ::
-          {:ok, {value :: binary(), store :: Store.t()}} | {:error, :not_found}
+          {:ok, {value :: binary, store :: Store.t()}} | {:error, :not_found}
   def delete(store, database, key) do
     case store do
       %{^database => %{^key => value}} ->

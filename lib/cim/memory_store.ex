@@ -3,7 +3,7 @@ defmodule Cim.Store do
   Store type definition
   """
 
-  @type t() :: %{any => %{any => binary()}}
+  @type t() :: %{any => %{any => binary}}
 end
 
 defmodule Cim.MemoryStore do
