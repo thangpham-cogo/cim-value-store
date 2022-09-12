@@ -23,7 +23,6 @@ defmodule Cim.MixProject do
   defp deps do
     [
       {:luerl, "~> 1.0.0"},
-      {:mox, "~> 1.0.2"},
       {:plug_cowboy, "~> 2.0"},
       {:credo, "~> 1.6.6"},
       {:dialyxir, "~> 1.0", only: [:dev, :test], runtime: false}

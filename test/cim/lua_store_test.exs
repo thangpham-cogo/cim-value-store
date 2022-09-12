@@ -1,66 +1,43 @@
 defmodule Cim.LuaStoreTest do
   use ExUnit.Case, async: true
-  import Mox
-
-  setup :verify_on_exit!
 
   alias Cim.LuaStore
+  alias Cim.MemoryStore
+
+  setup do
+    db = "lua_store"
+    MemoryStore.put(db, "key", "value")
+
+    {:ok, db: db}
+  end
 
   describe "read/1" do
-    test "returns value if key is set" do
-      database = "db"
-      key = "key"
-      value = "value"
-
-      expect(MockStore, :get, fn ^database, ^key -> {:ok, value} end)
-
-      assert value == LuaStore.read(database, key)
+    test "returns value if key is set", ctx do
+      assert "value" == LuaStore.read(ctx.db, "key")
     end
 
-    test "returns nil if key not set" do
-      database = "db"
-      key = "key"
-
-      expect(MockStore, :get, fn ^database, ^key -> {:error, :not_found} end)
-
-      assert nil == LuaStore.read(database, key)
+    test "returns nil if key not set", ctx do
+      assert nil == LuaStore.read(ctx.db, "unknown_key")
     end
   end
 
   describe "write/2" do
-    test "returns :ok if writing to key succeeds" do
-      database = "db"
-      key = "key"
+    test "returns :ok if writing to key succeeds", ctx do
+      key = "new_key"
       value = "value"
 
-      expect(MockStore, :put, fn ^database, ^key, ^value -> :ok end)
-
-      assert :ok = LuaStore.write(database, key, value)
+      assert :ok = LuaStore.write(ctx.db, key, value)
+      assert value == LuaStore.read(ctx.db, key)
     end
   end
 
   describe "delete/1" do
-    test "returns deleted value if key is set" do
-      database = "db"
-      key = "key"
-      value = "value"
-
-      expect(MockStore, :drop_key, fn ^database, ^key ->
-        {:ok, {value, %{"database" => %{}}}}
-      end)
-
-      assert value == LuaStore.delete(database, key)
+    test "returns deleted value if key is set", ctx do
+      assert "value" = LuaStore.delete(ctx.db, "key")
     end
 
-    test "returns nil if key is set" do
-      database = "db"
-      key = "key"
-
-      expect(MockStore, :drop_key, fn ^database, ^key ->
-        {:ok, {nil, %{"database" => %{}}}}
-      end)
-
-      assert nil == LuaStore.delete(database, key)
+    test "returns nil if key is not set", ctx do
+      assert nil == LuaStore.delete(ctx.db, "unknown_key")
     end
   end
 end

@@ -8,6 +8,7 @@ defmodule Cim.StoreBehavior do
 
   @callback put(database :: String.t(), key :: String.t(), value :: binary) :: :ok
   @callback drop_database(database :: String.t()) :: :ok | {:error, :not_found}
-  @callback drop_key(database :: String.t(), key :: String.t()) :: :ok | {:error, :not_found}
+  @callback drop_key(database :: String.t(), key :: String.t()) ::
+              {:ok, any} | {:error, :not_found}
   @callback has_database?(database :: String.t()) :: boolean()
 end

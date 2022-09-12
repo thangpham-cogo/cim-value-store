@@ -44,7 +44,8 @@ defmodule CimWeb.StoreController do
     %{"database" => database, "key" => key} = conn.params
 
     case store.drop_key(database, key) do
-      :ok -> send_resp(conn, 200, "")
+      {:ok, value} when not is_nil(value) -> send_resp(conn, 200, "")
+      {:ok, nil} -> not_found(conn)
       {:error, :not_found} -> not_found(conn)
     end
   end
