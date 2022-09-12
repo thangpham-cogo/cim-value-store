@@ -59,7 +59,7 @@ defmodule CimWeb.StoreController do
          {:ok, value} <- LuaInterpreter.eval(database, script) do
       conn
       |> put_req_header("content-type", "application/octet-stream")
-      |> send_resp(200, IO.inspect(value))
+      |> send_resp(200, inspect(value))
     else
       false ->
         not_found(conn)

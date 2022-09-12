@@ -105,7 +105,7 @@ defmodule CimWeb.StoreControllerTest do
         |> conn("/db", ~s|return "hello world"|)
         |> Router.call(@opts)
 
-      assert %{state: :sent, status: 200, resp_body: "hello world"} = conn
+      assert %{state: :sent, status: 200, resp_body: ~s|"hello world"|} = conn
     end
 
     test "returns 200 for valid multiline script" do
@@ -123,7 +123,7 @@ defmodule CimWeb.StoreControllerTest do
         |> conn("/db", script)
         |> Router.call(@opts)
 
-      assert %{state: :sent, status: 200, resp_body: "hello world"} = conn
+      assert %{state: :sent, status: 200, resp_body: ~s|"hello world"|} = conn
     end
 
     test "returns 404 if database not found" do
