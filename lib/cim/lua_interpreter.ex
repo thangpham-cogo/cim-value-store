@@ -4,6 +4,7 @@ defmodule Cim.LuaInterpreter do
   """
 
   @namespace "cim"
+  alias Cim.LuaStore
 
   @spec eval(database :: String.t(), script :: binary) ::
           {:error, :syntax_error | {:internal_error, any} | {:runtime_error, any}} | {:ok, any}
@@ -45,34 +46,14 @@ defmodule Cim.LuaInterpreter do
   end
 
   defp bind_functions_to(database) do
-    store = store()
-
     %{
-      [@namespace, "read"] => fn [key] -> [read(store, database, key)] end,
-      [@namespace, "write"] => fn [key, value] -> [write(store, database, key, value)] end,
-      [@namespace, "delete"] => fn [key] -> [delete(store, database, key)] end
+      [@namespace, "read"] => fn [key] -> [LuaStore.read(database, key)] end,
+      [@namespace, "write"] => fn [key, value] -> [LuaStore.write(database, key, value)] end,
+      [@namespace, "delete"] => fn [key] -> [LuaStore.delete(database, key)] end
     }
-  end
-
-  defp write(store, database, key, value), do: store.put(database, key, value)
-
-  defp read(store, database, key) do
-    case store.get(database, key) do
-      {:ok, value} -> value
-      {:error, :not_found} -> nil
-    end
-  end
-
-  defp delete(store, database, key) do
-    case store.drop_key(database, key) do
-      {:ok, {value, _updated_store}} -> value
-      {:error, :not_found} -> nil
-    end
   end
 
   defp to_elixir([]), do: ""
   defp to_elixir([{:ok, value}]), do: value
   defp to_elixir([result]), do: result
-
-  defp store(), do: Application.get_env(:cim, :store, Cim.MemoryStore)
 end

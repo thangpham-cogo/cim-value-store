@@ -58,8 +58,8 @@ defmodule Cim.MemoryStore do
   @impl GenServer
   def handle_call({:delete, [database, key]}, _from, state) do
     case StoreLogics.delete(state, database, key) do
-      {:ok, {_deleted, next_state}} ->
-        {:reply, :ok, next_state}
+      {:ok, {deleted, next_state}} ->
+        {:reply, {:ok, deleted}, next_state}
 
       {:error, :not_found} ->
         {:reply, {:error, :not_found}, state}
