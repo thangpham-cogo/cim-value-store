@@ -1,5 +1,5 @@
 defmodule Cim.StoreLogicsTest do
-  use ExUnit.Case
+  use ExUnit.Case, async: true
 
   alias Cim.StoreLogics
 
