@@ -6,19 +6,15 @@ defmodule Cim.Application do
 
   @impl true
   def start(_type, _args) do
-    port = port()
+    children = [
+      Cim.MemoryStore,
+      {Plug.Cowboy, scheme: :http, plug: CimWeb.Router, options: [port: port()]}
+    ]
 
     opts = [strategy: :one_for_one, name: Cim.Supervisor]
 
-    children = [
-      Cim.MemoryStore,
-      {Plug.Cowboy, scheme: :http, plug: CimWeb.Router, options: [port: port]}
-    ]
-
-    {:ok, pid} = Supervisor.start_link(children, opts)
-    Logger.info("Key-Value Store Server listening on port #{port}")
-
-    {:ok, pid}
+    Logger.info("Key-Value Store Server listening on port #{port()}")
+    Supervisor.start_link(children, opts)
   end
 
   defp port() do
