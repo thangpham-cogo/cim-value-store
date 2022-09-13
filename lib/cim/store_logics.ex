@@ -26,7 +26,7 @@ defmodule Cim.StoreLogics do
   """
   @spec put(Store.t(), Store.database(), Store.key(), Store.value()) :: Store.t()
   def put(store, database, key, value) do
-    if Map.has_key?(store, database) do
+    if has_database?(store, database) do
       put_in(store, [database, key], value)
     else
       Map.put(store, database, %{key => value})
@@ -38,9 +38,10 @@ defmodule Cim.StoreLogics do
   """
   @spec delete(Store.t(), Store.database()) :: {:ok, Store.t()} | {:error, :not_found}
   def delete(store, database) do
-    case Map.has_key?(store, database) do
-      true -> {:ok, Map.delete(store, database)}
-      false -> {:error, :not_found}
+    if has_database?(store, database) do
+      {:ok, Map.delete(store, database)}
+    else
+      {:error, :not_found}
     end
   end
 
@@ -51,15 +52,10 @@ defmodule Cim.StoreLogics do
   @spec delete(Store.t(), Store.database(), Store.key()) ::
           {:ok, {Store.value(), store :: Store.t()}} | {:error, :not_found}
   def delete(store, database, key) do
-    case store do
-      %{^database => %{^key => value}} ->
-        {:ok, {value, Map.update!(store, database, &Map.delete(&1, key))}}
-
-      %{^database => _} ->
-        {:ok, {nil, store}}
-
-      _ ->
-        {:error, :not_found}
+    if has_database?(store, database) do
+      {:ok, pop_in(store, [database, key])}
+    else
+      {:error, :not_found}
     end
   end
 
