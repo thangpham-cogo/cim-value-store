@@ -10,22 +10,10 @@ defmodule Cim.LuaInterpreter do
           {:error, :syntax_error | {:internal_error, any} | {:runtime_error, any}} | {:ok, any}
   def eval(database, script) when is_binary(database) do
     with {:ok, state} <- init(database),
-         {:ok, chunk, next_state} <- :luerl.load(script, state),
-         {:ok, result} when is_list(result) <- :luerl.eval(chunk, next_state) do
-      {:ok, unwrap(result)}
+         {:ok, chunk, next_state} <- load(script, state) do
+      eval_and_unwrap(chunk, next_state)
     else
-      # https://github.com/rvirding/luerl/blob/bc655178dc8f59f29199fd7df77a7c314c0f2e02/src/luerl_comp.erl#L301
-      {:error, errors, warnings} when is_list(errors) and is_list(warnings) ->
-        {:error, :syntax_error}
-
-      {:error, {:lua_error, reason, _state}, _stack_trace} ->
-        {:error, {:runtime_error, reason}}
-
-      {:error, reason, _stack_trace} ->
-        {:error, {:internal_error, reason}}
-
-      error ->
-        {:error, {:internal_error, error}}
+      error -> error
     end
   end
 
@@ -53,9 +41,38 @@ defmodule Cim.LuaInterpreter do
     }
   end
 
-  defp unwrap([]), do: ""
-  defp unwrap([{:ok, value}]), do: value
-  defp unwrap([result]), do: result
+  defp load(script, state) do
+    case :luerl.load(script, state) do
+      {:ok, chunk, next_state} ->
+        {:ok, chunk, next_state}
+
+      # https://github.com/rvirding/luerl/blob/bc655178dc8f59f29199fd7df77a7c314c0f2e02/src/luerl_comp.erl#L301
+      {:error, errors, warnings} when is_list(errors) and is_list(warnings) ->
+        {:error, :syntax_error}
+
+      error ->
+        {:error, {:internal_error, error}}
+    end
+  end
+
+  defp eval_and_unwrap(chunk, state) do
+    case :luerl.eval(chunk, state) do
+      {:ok, []} ->
+        {:ok, ""}
+
+      {:ok, [result]} ->
+        {:ok, result}
+
+      {:error, {:lua_error, reason, _state}, _stack_trace} ->
+        {:error, {:runtime_error, reason}}
+
+      {:error, reason, _stack_trace} ->
+        {:error, {:internal_error, reason}}
+
+      error ->
+        {:error, {:internal_error, error}}
+    end
+  end
 
   @spec read(Store.database(), Store.key()) :: Store.value() | nil
   defp read(database, key) do
