@@ -8,14 +8,10 @@ defmodule CimWeb.StoreController do
   alias Cim.{LuaInterpreter, MemoryStore}
 
   @spec get(Plug.Conn.t()) :: Plug.Conn.t()
-  def get(conn) do
-    %{"database" => database, "key" => key} = conn.params
-
+  def get(%{params: %{"database" => database, "key" => key}} = conn) do
     case MemoryStore.get(database, key) do
       {:ok, value} ->
-        conn
-        |> put_resp_header("content-type", "application/octet-stream")
-        |> send_resp(200, value)
+        ok(conn, value)
 
       {:error, :not_found} ->
         not_found(conn)
@@ -23,60 +19,61 @@ defmodule CimWeb.StoreController do
   end
 
   @spec put(Plug.Conn.t()) :: Plug.Conn.t()
-  def put(conn) do
-    {:ok, body, _} = read_body(conn)
-    %{"database" => database, "key" => key} = conn.params
-    :ok = MemoryStore.put(database, key, body)
-
-    send_resp(conn, 200, "")
+  def put(%{params: %{"database" => database, "key" => key}} = conn) do
+    with {:ok, body, conn} <- read_body(conn),
+         :ok <- MemoryStore.put(database, key, body) do
+      ok(conn)
+    end
   end
 
   @spec delete_database(Plug.Conn.t()) :: Plug.Conn.t()
-  def delete_database(conn) do
-    case MemoryStore.drop_database(Map.fetch!(conn.params, "database")) do
-      :ok -> send_resp(conn, 200, "")
+  def delete_database(%{params: %{"database" => database}} = conn) do
+    case MemoryStore.drop_database(database) do
+      :ok -> ok(conn)
       {:error, :not_found} -> not_found(conn)
     end
   end
 
   @spec delete_key(Plug.Conn.t()) :: Plug.Conn.t()
-  def delete_key(conn) do
-    %{"database" => database, "key" => key} = conn.params
-
+  def delete_key(%{params: %{"database" => database, "key" => key}} = conn) do
     case MemoryStore.drop_key(database, key) do
-      {:ok, value} when not is_nil(value) -> send_resp(conn, 200, "")
+      {:ok, value} when not is_nil(value) -> ok(conn)
       {:ok, nil} -> not_found(conn)
       {:error, :not_found} -> not_found(conn)
     end
   end
 
   @spec post(Plug.Conn.t()) :: Plug.Conn.t()
-  def post(conn) do
-    {:ok, script, _} = read_body(conn)
-
-    database = Map.fetch!(conn.params, "database")
-
-    with true <- MemoryStore.has_database?(database),
+  def post(%{params: %{"database" => database}} = conn) do
+    with {:ok, script, conn} <- read_body(conn),
+         true <- MemoryStore.has_database?(database),
          {:ok, value} <- LuaInterpreter.eval(database, script) do
-      conn
-      |> put_req_header("content-type", "application/octet-stream")
-      |> send_resp(200, inspect(value))
+      ok(conn, inspect(value))
     else
       false ->
         not_found(conn)
 
       {:error, :syntax_error} ->
-        send_text_error_message(conn, "invalid lua script")
+        bad_request(conn, "invalid lua script")
 
       {:error, {:runtime_error, _reason}} ->
-        send_text_error_message(conn, "invalid lua script")
+        bad_request(conn, "invalid lua script")
     end
   end
 
-  defp send_text_error_message(conn, err_message, status_code \\ 400) do
+  defp ok(conn, body \\ "")
+  defp ok(conn, ""), do: send_resp(conn, 200, "")
+
+  defp ok(conn, body) do
+    conn
+    |> put_resp_header("content-type", "application/octet-stream")
+    |> send_resp(200, body)
+  end
+
+  defp bad_request(conn, err_message) do
     conn
     |> put_req_header("content-type", "text/plain")
-    |> send_resp(status_code, err_message)
+    |> send_resp(400, err_message)
   end
 
   defp not_found(conn), do: send_resp(conn, 404, "")
