@@ -4,77 +4,33 @@ defmodule Cim.LuaInterpreter do
   """
 
   @namespace "cim"
-  alias Cim.{Store, MemoryStore}
 
-  @spec eval(Store.database(), script :: binary) ::
-          {:error, :syntax_error | {:internal_error, any} | {:runtime_error, any}} | {:ok, any}
-  def eval(database, script) when is_binary(database) do
-    with {:ok, state} <- init(database),
-         {:ok, chunk, next_state} <- load(script, state) do
-      eval_and_unwrap(chunk, next_state)
-    else
-      error -> error
-    end
+  alias Cim.{Store, MemoryStore, Luerl}
+
+  @doc """
+  Evaluates a valid lua script against a particular database in Cim.MemoryStore.
+
+  Allows the use of cim.read/1, cim.write/2 and cim.delete/1 in script.
+  """
+  @spec eval(Store.database(), script :: binary) :: Luerl.eval_response()
+  def eval(database, script) do
+    database
+    |> init()
+    |> Luerl.eval(script)
   end
 
   defp init(database) do
-    initial_state = bind_store_api(database)
-
-    {:ok, initial_state}
+    Luerl.initial_state()
+    |> Luerl.set_table([@namespace], %{})
+    |> Luerl.set_table([@namespace, "read"], cim_read(database))
+    |> Luerl.set_table([@namespace, "write"], cim_write(database))
+    |> Luerl.set_table([@namespace, "delete"], cim_delete(database))
   end
 
-  defp bind_store_api(database) do
-    state = :luerl.set_table([@namespace], %{}, :luerl.init())
-    functions_config = bind_functions_to(database)
+  defp cim_read(database), do: fn [key] -> [read(database, key)] end
+  defp cim_write(database), do: fn [key, value] -> [write(database, key, value)] end
+  defp cim_delete(database), do: fn [key] -> [delete(database, key)] end
 
-    functions_config
-    |> Enum.reduce(state, fn {paths, func}, next_state ->
-      :luerl.set_table(paths, func, next_state)
-    end)
-  end
-
-  defp bind_functions_to(database) do
-    %{
-      [@namespace, "read"] => fn [key] -> [read(database, key)] end,
-      [@namespace, "write"] => fn [key, value] -> [write(database, key, value)] end,
-      [@namespace, "delete"] => fn [key] -> [delete(database, key)] end
-    }
-  end
-
-  defp load(script, state) do
-    case :luerl.load(script, state) do
-      {:ok, chunk, next_state} ->
-        {:ok, chunk, next_state}
-
-      # https://github.com/rvirding/luerl/blob/bc655178dc8f59f29199fd7df77a7c314c0f2e02/src/luerl_comp.erl#L301
-      {:error, errors, warnings} when is_list(errors) and is_list(warnings) ->
-        {:error, :syntax_error}
-
-      error ->
-        {:error, {:internal_error, error}}
-    end
-  end
-
-  defp eval_and_unwrap(chunk, state) do
-    case :luerl.eval(chunk, state) do
-      {:ok, []} ->
-        {:ok, ""}
-
-      {:ok, [result]} ->
-        {:ok, result}
-
-      {:error, {:lua_error, reason, _state}, _stack_trace} ->
-        {:error, {:runtime_error, reason}}
-
-      {:error, reason, _stack_trace} ->
-        {:error, {:internal_error, reason}}
-
-      error ->
-        {:error, {:internal_error, error}}
-    end
-  end
-
-  @spec read(Store.database(), Store.key()) :: Store.value() | nil
   defp read(database, key) do
     case MemoryStore.get(database, key) do
       {:ok, value} -> value
@@ -82,10 +38,8 @@ defmodule Cim.LuaInterpreter do
     end
   end
 
-  @spec write(Store.database(), Store.key(), Store.value()) :: :ok
   defdelegate write(database, key, value), to: MemoryStore, as: :put
 
-  @spec delete(Store.database(), Store.key()) :: Store.value() | nil
   defp delete(database, key) do
     case MemoryStore.drop_key(database, key) do
       {:ok, value} -> value
