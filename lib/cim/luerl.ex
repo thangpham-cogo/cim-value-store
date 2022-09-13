@@ -12,19 +12,21 @@ defmodule Cim.Luerl do
   Initialize a new lua vm instance, returning a fresh vm state
   """
   @spec initial_state() :: luerl_state
-  defdelegate initial_state(), to: :luerl, as: :init
+  defdelegate initial_state(), to: :luerl_sandbox, as: :init
 
   @doc """
   Stores a value in the lua's vm table. Returns the updated vm state
   """
   @spec set_table(luerl_state, paths :: list(String.t()), any) :: luerl_state
-  def set_table(state, paths, value), do: :luerl.set_table(paths, value, state)
+  def set_table({:luerl, _, _, _, _, _, _, _, _, _, _, _, _} = state, paths, value) do
+    :luerl.set_table(paths, value, state)
+  end
 
   @doc """
   Runs a script against the given vm state.
   """
   @spec eval(luerl_state, script :: binary) :: eval_response
-  def eval(state, script) do
+  def eval({:luerl, _, _, _, _, _, _, _, _, _, _, _, _} = state, script) do
     with {:ok, chunk, next_state} <- :luerl.load(script, state),
          {:ok, result} when is_list(result) <- :luerl.eval(chunk, next_state) do
       {:ok, unwrap(result)}
