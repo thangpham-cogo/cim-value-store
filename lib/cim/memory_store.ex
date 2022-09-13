@@ -76,7 +76,7 @@ defmodule Cim.MemoryStore do
 
   @impl GenServer
   def handle_cast({:put, [database, key, value]}, state) do
-    {:ok, next_state} = StoreLogics.put(state, database, key, value)
+    next_state = StoreLogics.put(state, database, key, value)
 
     {:noreply, next_state}
   end

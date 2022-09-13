@@ -26,20 +26,24 @@ defmodule Cim.StoreLogicsTest do
   end
 
   describe "put/4" do
-    test "replaces an existing value and returns ok tuple with the updated store", ctx do
-      assert {:ok, %{"db" => %{"key" => "new_value"}}} =
+    test "replaces an existing value and returns the updated store", ctx do
+      assert %{"db" => %{"key" => "new_value"}} =
                StoreLogics.put(ctx.store, "db", "key", "new_value")
     end
 
-    test "stores the value under a new key and returns ok tuple with the updated store", ctx do
-      assert {:ok, %{"db" => %{"new_key" => "value"}}} =
+    test "stores the value under a new key and returns the updated store", ctx do
+      assert %{"db" => %{"new_key" => "value"}} =
                StoreLogics.put(ctx.store, "db", "new_key", "value")
     end
 
-    test "stores the value under a new database & key and returns ok tuple with the updated store",
+    test "stores the value under a new database & key and returns the updated store",
          ctx do
-      assert {:ok, %{"new_db" => %{"key" => "value"}}} =
+      assert Map.merge(%{"new_db" => %{"key" => "value"}}, ctx.store) ==
                StoreLogics.put(ctx.store, "new_db", "key", "value")
+    end
+
+    test "returns the current store if key already set with the same value", ctx do
+      assert ctx.store == StoreLogics.put(ctx.store, "db", "key", "value")
     end
   end
 

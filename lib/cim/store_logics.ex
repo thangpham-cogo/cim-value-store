@@ -20,18 +20,17 @@ defmodule Cim.StoreLogics do
   end
 
   @doc """
-  Stores a value under the given database and key. Will create in place if either database/key does not exist
-  """
-  @spec put(Store.t(), Store.database(), Store.key(), Store.value()) ::
-          {:ok, Store.t()}
-  def put(store, database, key, value) do
-    updated_store =
-      case Map.has_key?(store, database) do
-        true -> put_in(store, [database, key], value)
-        false -> store |> Map.put(database, %{key => value})
-      end
+  Stores a value under the given database and key. Will create in place if either database/key does not exist.
 
-    {:ok, updated_store}
+  Returns the updated store
+  """
+  @spec put(Store.t(), Store.database(), Store.key(), Store.value()) :: Store.t()
+  def put(store, database, key, value) do
+    if Map.has_key?(store, database) do
+      put_in(store, [database, key], value)
+    else
+      Map.put(store, database, %{key => value})
+    end
   end
 
   @doc """
