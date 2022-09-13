@@ -1,4 +1,5 @@
 defmodule CimWeb.StoreControllerTest do
+  require Logger
   use ExUnit.Case, async: true
   use Plug.Test
 
@@ -7,7 +8,7 @@ defmodule CimWeb.StoreControllerTest do
 
   @opts Router.init([])
 
-  setup :default_db_with_entry
+  setup :db_with_one_entry
 
   describe "PUT /{database}/{key}" do
     test "inserts a value under a new key in an existing database", ctx do
@@ -46,11 +47,8 @@ defmodule CimWeb.StoreControllerTest do
   end
 
   describe "DELETE /{database}" do
-    test "removes and returns 200 if database exists" do
-      db = "controller_test_db_delete"
-      MemoryStore.put(db, "key", "value")
-
-      conn = request(:delete, to_path(db))
+    test "removes and returns 200 if database exists", ctx do
+      conn = request(:delete, to_path(ctx.db))
 
       assert %{state: :sent, status: 200, resp_body: ""} = conn
     end
@@ -89,15 +87,8 @@ defmodule CimWeb.StoreControllerTest do
   end
 
   describe "POST /{database}" do
-    setup do
-      lua_script_db = "lua_script_db"
-      MemoryStore.put(lua_script_db, "key", "value")
-
-      {:ok, lua_script_db: lua_script_db}
-    end
-
     test "returns 200 with output for valid request", ctx do
-      conn = request(:post, to_path(ctx.lua_script_db), ~s|return "hello world"|)
+      conn = request(:post, to_path(ctx.db), ~s|return "hello world"|)
 
       assert %{state: :sent, status: 200, resp_body: ~s|"hello world"|} = conn
       assert {"content-type", "application/octet-stream"} in conn.resp_headers
@@ -111,7 +102,7 @@ defmodule CimWeb.StoreControllerTest do
       return test()
       """
 
-      conn = request(:post, to_path(ctx.lua_script_db), script)
+      conn = request(:post, to_path(ctx.db), script)
 
       assert %{state: :sent, status: 200, resp_body: ~s|"hello world"|} = conn
       assert {"content-type", "application/octet-stream"} in conn.resp_headers
@@ -125,7 +116,7 @@ defmodule CimWeb.StoreControllerTest do
       return cim.delete("ef")
       """
 
-      conn = request(:post, to_path(ctx.lua_script_db), script)
+      conn = request(:post, to_path(ctx.db), script)
 
       assert %{state: :sent, status: 200, resp_body: "12"} = conn
       assert {"content-type", "application/octet-stream"} in conn.resp_headers
@@ -138,26 +129,27 @@ defmodule CimWeb.StoreControllerTest do
     end
 
     test "returns 400 error for script with invalid syntax", ctx do
-      conn = request(:post, to_path(ctx.lua_script_db), ~s|this is not valid lua syntax|)
+      conn = request(:post, to_path(ctx.db), ~s|this is not valid lua syntax|)
 
       assert %{state: :sent, status: 400, resp_body: "invalid lua script"} = conn
       assert {"content-type", "text/plain"} in conn.resp_headers
     end
 
     test "returns 400 error for script with runtime error", ctx do
-      conn = request(:post, to_path(ctx.lua_script_db), ~s|return unknown_func("foo")|)
+      conn = request(:post, to_path(ctx.db), ~s|return unknown_func("foo")|)
 
       assert %{state: :sent, status: 400, resp_body: "invalid lua script"} = conn
       assert {"content-type", "text/plain"} in conn.resp_headers
     end
   end
 
-  defp default_db_with_entry(_ctx) do
-    db = "controller_test_db"
-    key = "key"
-    value = "value"
+  defp db_with_one_entry(ctx) do
+    db = unique_suffix("db")
+    key = unique_suffix("key")
+    value = unique_suffix("value")
 
     MemoryStore.put(db, key, value)
+    Logger.debug(test: ctx.test, db: db, key: key, value: value)
 
     {:ok, db: db, key: key, value: value}
   end
@@ -184,4 +176,6 @@ defmodule CimWeb.StoreControllerTest do
   defp to_path(part1, part2), do: to_path([part1, part2])
   defp to_path(part) when is_binary(part), do: to_path([part])
   defp to_path(parts), do: Enum.map_join(parts, &("/" <> &1))
+
+  defp unique_suffix(str), do: "#{str}-#{System.unique_integer([:positive])}"
 end

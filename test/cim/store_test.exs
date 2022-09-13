@@ -3,7 +3,7 @@ defmodule Cim.StoreTest do
 
   alias Cim.Store
 
-  setup :store_with_one_database_and_key
+  setup :store_with_one_entry_db
 
   describe "get/3" do
     test "returns an ok tuple with the stored value given an existing database and key", ctx do
@@ -86,7 +86,7 @@ defmodule Cim.StoreTest do
     end
   end
 
-  def store_with_one_database_and_key(_ctx) do
+  def store_with_one_entry_db(_ctx) do
     store = %{
       "db" => %{
         "key" => "value"
