@@ -100,6 +100,7 @@ defmodule CimWeb.StoreControllerTest do
       conn = request(:post, to_path(ctx.lua_script_db), ~s|return "hello world"|)
 
       assert %{state: :sent, status: 200, resp_body: ~s|"hello world"|} = conn
+      assert {"content-type", "application/octet-stream"} in conn.resp_headers
     end
 
     test "returns 200 for valid multiline script", ctx do
@@ -113,6 +114,7 @@ defmodule CimWeb.StoreControllerTest do
       conn = request(:post, to_path(ctx.lua_script_db), script)
 
       assert %{state: :sent, status: 200, resp_body: ~s|"hello world"|} = conn
+      assert {"content-type", "application/octet-stream"} in conn.resp_headers
     end
 
     test "returns 200 for valid script that uses cim store lua api", ctx do
@@ -126,6 +128,7 @@ defmodule CimWeb.StoreControllerTest do
       conn = request(:post, to_path(ctx.lua_script_db), script)
 
       assert %{state: :sent, status: 200, resp_body: "12"} = conn
+      assert {"content-type", "application/octet-stream"} in conn.resp_headers
     end
 
     test "returns 404 if database not found" do
@@ -138,12 +141,14 @@ defmodule CimWeb.StoreControllerTest do
       conn = request(:post, to_path(ctx.lua_script_db), ~s|this is not valid lua syntax|)
 
       assert %{state: :sent, status: 400, resp_body: "invalid lua script"} = conn
+      assert {"content-type", "text/plain"} in conn.resp_headers
     end
 
     test "returns 400 error for script with runtime error", ctx do
       conn = request(:post, to_path(ctx.lua_script_db), ~s|return unknown_func("foo")|)
 
       assert %{state: :sent, status: 400, resp_body: "invalid lua script"} = conn
+      assert {"content-type", "text/plain"} in conn.resp_headers
     end
   end
 

@@ -72,7 +72,7 @@ defmodule CimWeb.StoreController do
 
   defp bad_request(conn, err_message) do
     conn
-    |> put_req_header("content-type", "text/plain")
+    |> put_resp_header("content-type", "text/plain")
     |> send_resp(400, err_message)
   end
 
