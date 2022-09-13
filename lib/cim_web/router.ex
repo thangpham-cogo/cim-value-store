@@ -4,6 +4,7 @@ defmodule CimWeb.Router do
 
   alias CimWeb.StoreController
 
+  plug(Plug.RequestId)
   plug(Plug.Logger)
 
   plug(Plug.Parsers,
