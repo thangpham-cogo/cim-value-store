@@ -4,7 +4,7 @@ defmodule Cim.LuaInterpreter do
   """
 
   @namespace "cim"
-  alias Cim.{Store, LuaStore}
+  alias Cim.{Store, MemoryStore}
 
   @spec eval(Store.database(), script :: binary) ::
           {:error, :syntax_error | {:internal_error, any} | {:runtime_error, any}} | {:ok, any}
@@ -47,13 +47,32 @@ defmodule Cim.LuaInterpreter do
 
   defp bind_functions_to(database) do
     %{
-      [@namespace, "read"] => fn [key] -> [LuaStore.read(database, key)] end,
-      [@namespace, "write"] => fn [key, value] -> [LuaStore.write(database, key, value)] end,
-      [@namespace, "delete"] => fn [key] -> [LuaStore.delete(database, key)] end
+      [@namespace, "read"] => fn [key] -> [read(database, key)] end,
+      [@namespace, "write"] => fn [key, value] -> [write(database, key, value)] end,
+      [@namespace, "delete"] => fn [key] -> [delete(database, key)] end
     }
   end
 
   defp unwrap([]), do: ""
   defp unwrap([{:ok, value}]), do: value
   defp unwrap([result]), do: result
+
+  @spec read(Store.database(), Store.key()) :: Store.value() | nil
+  defp read(database, key) do
+    case MemoryStore.get(database, key) do
+      {:ok, value} -> value
+      {:error, :not_found} -> nil
+    end
+  end
+
+  @spec write(Store.database(), Store.key(), Store.value()) :: :ok
+  defdelegate write(database, key, value), to: MemoryStore, as: :put
+
+  @spec delete(Store.database(), Store.key()) :: Store.value() | nil
+  defp delete(database, key) do
+    case MemoryStore.drop_key(database, key) do
+      {:ok, value} -> value
+      {:error, :not_found} -> nil
+    end
+  end
 end
