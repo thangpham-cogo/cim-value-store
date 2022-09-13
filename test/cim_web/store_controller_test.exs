@@ -11,19 +11,19 @@ defmodule CimWeb.StoreControllerTest do
 
   describe "PUT /{database}/{key}" do
     test "inserts a value under a new key in an existing database", ctx do
-      conn = put_key(ctx.db, "new_key", "value")
+      conn = request(:put, to_path(ctx.db, "new_key"), "value")
 
       assert %{state: :sent, status: 200} = conn
     end
 
     test "inserts a value under an existing database and key", ctx do
-      conn = put_key(ctx.db, ctx.key, "new_value")
+      conn = request(:put, to_path(ctx.db, ctx.key), "new_value")
 
       assert %{state: :sent, status: 200} = conn
     end
 
     test "inserts a value under a new database and key" do
-      conn = put_key("new_controller_test_db", "new_key", "new_value")
+      conn = request(:put, to_path("new_controller_test_db", "new_key"), "new_value")
 
       assert %{state: :sent, status: 200} = conn
     end
@@ -31,7 +31,7 @@ defmodule CimWeb.StoreControllerTest do
 
   describe "GET /{database}/{key}" do
     test "returns value if key exists", ctx do
-      conn = get("/#{ctx.db}/#{ctx.key}")
+      conn = request(:get, to_path(ctx.db, ctx.key))
 
       assert %{state: :sent, status: 200} = conn
       assert conn.resp_body == ctx.value
@@ -39,7 +39,7 @@ defmodule CimWeb.StoreControllerTest do
     end
 
     test "returns 404 if database or key not found", ctx do
-      conn = get("/#{ctx.db}/unknown_key")
+      conn = request(:get, to_path(ctx.db, "unknown_key"))
 
       assert %{state: :sent, status: 404, resp_body: ""} = conn
     end
@@ -50,13 +50,13 @@ defmodule CimWeb.StoreControllerTest do
       db = "controller_test_db_delete"
       MemoryStore.put(db, "key", "value")
 
-      conn = delete("/#{db}")
+      conn = request(:delete, to_path(db))
 
       assert %{state: :sent, status: 200, resp_body: ""} = conn
     end
 
     test "returns 404 if database does not exist" do
-      conn = delete("/unknown_db")
+      conn = request(:delete, to_path("unknown_db"))
 
       assert %{state: :sent, status: 404, resp_body: ""} = conn
     end
@@ -64,25 +64,25 @@ defmodule CimWeb.StoreControllerTest do
 
   describe "DELETE /{database}/{key}" do
     test "removes and returns 200 if key exists", ctx do
-      conn = delete("/#{ctx.db}/#{ctx.key}")
+      conn = request(:delete, to_path(ctx.db, ctx.key))
 
       assert %{state: :sent, status: 200, resp_body: ""} = conn
     end
 
     test "returns 404 if database does not exist" do
-      conn = delete("/unknown_db/key")
+      conn = request(:delete, to_path("unknown_db", "key"))
 
       assert %{state: :sent, status: 404, resp_body: ""} = conn
     end
 
     test "returns 404 if key does not exist", ctx do
-      conn = delete("/#{ctx.db}/unknown_key")
+      conn = request(:delete, to_path(ctx.db, "unknown_key"))
 
       assert %{state: :sent, status: 404, resp_body: ""} = conn
     end
 
     test "returns 404 if both database and key do not exist" do
-      conn = delete("/unknown_db/unknown_key")
+      conn = request(:delete, to_path("unknown_db", "unknown_key"))
 
       assert %{state: :sent, status: 404, resp_body: ""} = conn
     end
@@ -97,7 +97,7 @@ defmodule CimWeb.StoreControllerTest do
     end
 
     test "returns 200 with output for valid request", ctx do
-      conn = post_script(ctx.lua_script_db, ~s|return "hello world"|)
+      conn = request(:post, to_path(ctx.lua_script_db), ~s|return "hello world"|)
 
       assert %{state: :sent, status: 200, resp_body: ~s|"hello world"|} = conn
     end
@@ -110,7 +110,7 @@ defmodule CimWeb.StoreControllerTest do
       return test()
       """
 
-      conn = post_script(ctx.lua_script_db, script)
+      conn = request(:post, to_path(ctx.lua_script_db), script)
 
       assert %{state: :sent, status: 200, resp_body: ~s|"hello world"|} = conn
     end
@@ -123,25 +123,25 @@ defmodule CimWeb.StoreControllerTest do
       return cim.delete("ef")
       """
 
-      conn = post_script(ctx.lua_script_db, script)
+      conn = request(:post, to_path(ctx.lua_script_db), script)
 
       assert %{state: :sent, status: 200, resp_body: "12"} = conn
     end
 
     test "returns 404 if database not found" do
-      conn = post_script("unknown_db", ~s|return "hello world"|)
+      conn = request(:post, to_path("unknown_db"), ~s|return "hello world"|)
 
       assert %{state: :sent, status: 404} = conn
     end
 
     test "returns 400 error for script with invalid syntax", ctx do
-      conn = post_script(ctx.lua_script_db, ~s|this is not valid lua syntax|)
+      conn = request(:post, to_path(ctx.lua_script_db), ~s|this is not valid lua syntax|)
 
       assert %{state: :sent, status: 400, resp_body: "invalid lua script"} = conn
     end
 
     test "returns 400 error for script with runtime error", ctx do
-      conn = post_script(ctx.lua_script_db, ~s|return unknown_func("foo")|)
+      conn = request(:post, to_path(ctx.lua_script_db), ~s|return unknown_func("foo")|)
 
       assert %{state: :sent, status: 400, resp_body: "invalid lua script"} = conn
     end
@@ -152,33 +152,31 @@ defmodule CimWeb.StoreControllerTest do
     key = "key"
     value = "value"
 
-    MemoryStore.put(db, "key", "value")
+    MemoryStore.put(db, key, value)
 
     {:ok, db: db, key: key, value: value}
   end
 
-  defp put_key(db, key, value) do
+  defp request(method, path) when method in [:get, :delete] do
+    method
+    |> conn(path)
+    |> Router.call(@opts)
+  end
+
+  defp request(:put, path, body) do
     :put
-    |> conn("/#{db}/#{key}", value)
+    |> conn(path, body)
     |> put_req_header("content-type", "application/octet-stream")
     |> Router.call(@opts)
   end
 
-  defp get(path) do
-    :get
-    |> conn(path)
-    |> Router.call(@opts)
-  end
-
-  defp delete(path) do
-    :delete
-    |> conn(path)
-    |> Router.call(@opts)
-  end
-
-  defp post_script(db, script) do
+  defp request(:post, path, body) do
     :post
-    |> conn("/#{db}", script)
+    |> conn(path, body)
     |> Router.call(@opts)
   end
+
+  defp to_path(part1, part2), do: to_path([part1, part2])
+  defp to_path(part) when is_binary(part), do: to_path([part])
+  defp to_path(parts), do: Enum.map_join(parts, &("/" <> &1))
 end
