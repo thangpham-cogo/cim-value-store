@@ -1,10 +1,10 @@
 defmodule Cim.MemoryStore do
   @moduledoc """
-  A gen server for holding the store, dispatching client requests to and passing back response from StoreLogics
+  A gen server for holding the store, dispatching client requests to and passing back response from Store
   """
   use GenServer
 
-  alias Cim.StoreLogics
+  alias Cim.Store
 
   @behaviour Cim.StoreBehavior
 
@@ -44,12 +44,12 @@ defmodule Cim.MemoryStore do
 
   @impl GenServer
   def handle_call({:get, [database, key]}, _from, state) do
-    {:reply, StoreLogics.get(state, database, key), state}
+    {:reply, Store.get(state, database, key), state}
   end
 
   @impl GenServer
   def handle_call({:delete, [database, key]}, _from, state) do
-    case StoreLogics.delete(state, database, key) do
+    case Store.delete(state, database, key) do
       {:ok, {deleted, next_state}} ->
         {:reply, {:ok, deleted}, next_state}
 
@@ -60,7 +60,7 @@ defmodule Cim.MemoryStore do
 
   @impl GenServer
   def handle_call({:delete, database}, _from, state) do
-    case StoreLogics.delete(state, database) do
+    case Store.delete(state, database) do
       {:ok, next_state} ->
         {:reply, :ok, next_state}
 
@@ -71,15 +71,15 @@ defmodule Cim.MemoryStore do
 
   @impl GenServer
   def handle_call({:database_exists?, database}, _from, state) do
-    {:reply, StoreLogics.has_database?(state, database), state}
+    {:reply, Store.has_database?(state, database), state}
   end
 
   @impl GenServer
   def handle_cast({:put, [database, key, value]}, state) do
-    next_state = StoreLogics.put(state, database, key, value)
+    next_state = Store.put(state, database, key, value)
 
     {:noreply, next_state}
   end
 
-  defp new_store(), do: StoreLogics.new()
+  defp new_store(), do: Store.new()
 end
