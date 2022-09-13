@@ -14,7 +14,7 @@ defmodule Cim.MemoryStore do
 
   @impl GenServer
   def init(nil) do
-    {:ok, new_store()}
+    {:ok, Store.new()}
   end
 
   @impl Cim.StoreBehavior
@@ -80,6 +80,4 @@ defmodule Cim.MemoryStore do
 
     {:noreply, next_state}
   end
-
-  defp new_store(), do: Store.new()
 end
