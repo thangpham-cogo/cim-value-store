@@ -23,7 +23,7 @@ defmodule Cim.Application do
       |> Keyword.get(:port)
 
     case Integer.parse(port) do
-      {port, ""} ->
+      {port, ""} when port > 0 ->
         port
 
       _ ->
