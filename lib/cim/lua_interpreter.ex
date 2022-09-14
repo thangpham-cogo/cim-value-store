@@ -38,7 +38,7 @@ defmodule Cim.LuaInterpreter do
     end
   end
 
-  defdelegate write(database, key, value), to: StoreServer, as: :put
+  defp write(database, key, value), do: StoreServer.put(database, key, value)
 
   defp delete(database, key) do
     case StoreServer.drop_key(database, key) do

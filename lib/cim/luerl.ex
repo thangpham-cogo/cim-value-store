@@ -8,7 +8,7 @@ defmodule Cim.Luerl do
           {:error, :syntax_error | {:internal_error, any} | {:runtime_error, any}} | {:ok, any}
 
   @doc """
-  Initialize a new lua vm instance, returning a fresh vm state
+  Initialize a new sandboxed lua vm instance, returning a fresh vm state
   """
   @spec initial_state() :: luerl_state
   defdelegate initial_state(), to: :luerl_sandbox, as: :init
