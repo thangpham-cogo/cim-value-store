@@ -13,20 +13,36 @@ defmodule CimWeb.StoreControllerTest do
   describe "PUT /{database}/{key}" do
     test "inserts a value under a new key in an existing database", ctx do
       conn = request(:put, to_path(ctx.db, "new_key"), "value")
-
       assert %{state: :sent, status: 200} = conn
+
+      conn = request(:get, to_path(ctx.db, "new_key"))
+      assert %{state: :sent, status: 200, resp_body: "value"} = conn
+      assert {"content-type", "application/octet-stream"} in conn.resp_headers
     end
 
     test "inserts a value under an existing database and key", ctx do
       conn = request(:put, to_path(ctx.db, ctx.key), "new_value")
-
       assert %{state: :sent, status: 200} = conn
+
+      conn = request(:get, to_path(ctx.db, ctx.key))
+      assert %{state: :sent, status: 200, resp_body: "new_value"} = conn
+      assert {"content-type", "application/octet-stream"} in conn.resp_headers
     end
 
     test "inserts a value under a new database and key" do
-      conn = request(:put, to_path("new_controller_test_db", "new_key"), "new_value")
+      new_db = unique_suffix("new_db")
+      key = "new_key"
+      value = "new_value"
 
+      conn = request(:get, to_path(new_db, key))
+      assert %{state: :sent, status: 404, resp_body: ""} = conn
+
+      conn = request(:put, to_path(new_db, key), value)
       assert %{state: :sent, status: 200} = conn
+
+      conn = request(:get, to_path(new_db, key))
+      assert %{state: :sent, status: 200, resp_body: ^value} = conn
+      assert {"content-type", "application/octet-stream"} in conn.resp_headers
     end
   end
 
@@ -49,8 +65,10 @@ defmodule CimWeb.StoreControllerTest do
   describe "DELETE /{database}" do
     test "removes and returns 200 if database exists", ctx do
       conn = request(:delete, to_path(ctx.db))
-
       assert %{state: :sent, status: 200, resp_body: ""} = conn
+
+      conn = request(:get, to_path(ctx.db, ctx.key))
+      assert %{state: :sent, status: 404, resp_body: ""} = conn
     end
 
     test "returns 404 if database does not exist" do
@@ -63,8 +81,10 @@ defmodule CimWeb.StoreControllerTest do
   describe "DELETE /{database}/{key}" do
     test "removes and returns 200 if key exists", ctx do
       conn = request(:delete, to_path(ctx.db, ctx.key))
-
       assert %{state: :sent, status: 200, resp_body: ""} = conn
+
+      conn = request(:get, to_path(ctx.db, ctx.key))
+      assert %{state: :sent, status: 404, resp_body: ""} = conn
     end
 
     test "returns 404 if database does not exist" do
@@ -119,6 +139,18 @@ defmodule CimWeb.StoreControllerTest do
       conn = request(:post, to_path(ctx.db), script)
 
       assert %{state: :sent, status: 200, resp_body: "12"} = conn
+      assert {"content-type", "application/octet-stream"} in conn.resp_headers
+    end
+
+    test "can access value being set by a separate GET request", ctx do
+      key = "ef"
+      value = "12"
+      request(:put, to_path(ctx.db, key), value)
+      script = ~s|return cim.read("#{key}") * 10|
+
+      conn = request(:post, to_path(ctx.db), script)
+
+      assert %{state: :sent, status: 200, resp_body: "120.0"} = conn
       assert {"content-type", "application/octet-stream"} in conn.resp_headers
     end
 
