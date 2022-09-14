@@ -1,13 +1,13 @@
 defmodule Cim.LuaInterpreterTest do
   use ExUnit.Case, async: true
 
-  alias Cim.{MemoryStore, LuaInterpreter}
+  alias Cim.{StoreServer, LuaInterpreter}
 
   setup do
     db = "lua_store"
     key = "key"
     value = "value"
-    MemoryStore.put(db, key, value)
+    StoreServer.put(db, key, value)
 
     {:ok, db: db, key: key, value: value}
   end

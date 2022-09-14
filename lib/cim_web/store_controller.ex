@@ -1,15 +1,15 @@
 defmodule CimWeb.StoreController do
   @moduledoc """
-  Handlers for interacting with Cim.MemoryStore
+  Handlers for interacting with Cim.StoreServer
   """
 
   import Plug.Conn
 
-  alias Cim.{LuaInterpreter, MemoryStore}
+  alias Cim.{LuaInterpreter, StoreServer}
 
   @spec get(Plug.Conn.t()) :: Plug.Conn.t()
   def get(%{params: %{"database" => database, "key" => key}} = conn) do
-    case MemoryStore.get(database, key) do
+    case StoreServer.get(database, key) do
       {:ok, value} ->
         ok(conn, value)
 
@@ -21,14 +21,14 @@ defmodule CimWeb.StoreController do
   @spec put(Plug.Conn.t()) :: Plug.Conn.t()
   def put(%{params: %{"database" => database, "key" => key}} = conn) do
     with {:ok, body, conn} <- read_body(conn),
-         :ok <- MemoryStore.put(database, key, body) do
+         :ok <- StoreServer.put(database, key, body) do
       ok(conn)
     end
   end
 
   @spec delete_database(Plug.Conn.t()) :: Plug.Conn.t()
   def delete_database(%{params: %{"database" => database}} = conn) do
-    case MemoryStore.drop_database(database) do
+    case StoreServer.drop_database(database) do
       :ok -> ok(conn)
       {:error, :not_found} -> not_found(conn)
     end
@@ -36,7 +36,7 @@ defmodule CimWeb.StoreController do
 
   @spec delete_key(Plug.Conn.t()) :: Plug.Conn.t()
   def delete_key(%{params: %{"database" => database, "key" => key}} = conn) do
-    case MemoryStore.drop_key(database, key) do
+    case StoreServer.drop_key(database, key) do
       {:ok, value} when not is_nil(value) -> ok(conn)
       {:ok, nil} -> not_found(conn)
       {:error, :not_found} -> not_found(conn)
@@ -46,7 +46,7 @@ defmodule CimWeb.StoreController do
   @spec post(Plug.Conn.t()) :: Plug.Conn.t()
   def post(%{params: %{"database" => database}} = conn) do
     with {:ok, script, conn} <- read_body(conn),
-         true <- MemoryStore.has_database?(database),
+         true <- StoreServer.has_database?(database),
          {:ok, value} <- LuaInterpreter.eval(database, script) do
       ok(conn, inspect(value))
     else

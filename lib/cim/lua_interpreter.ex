@@ -1,14 +1,14 @@
 defmodule Cim.LuaInterpreter do
   @moduledoc """
-  Thin wrapper around erlang luerl for interacting with Cim.MemoryStore in lua script
+  Thin wrapper around erlang luerl for interacting with Cim.StoreServer in lua script
   """
 
   @namespace "cim"
 
-  alias Cim.{Store, MemoryStore, Luerl}
+  alias Cim.{Store, StoreServer, Luerl}
 
   @doc """
-  Evaluates a valid lua script against a particular database in Cim.MemoryStore.
+  Evaluates a valid lua script against a particular database in Cim.StoreServer.
 
   Allows the use of cim.read/1, cim.write/2 and cim.delete/1 in script.
   """
@@ -32,16 +32,16 @@ defmodule Cim.LuaInterpreter do
   defp cim_delete(database), do: fn [key] -> [delete(database, key)] end
 
   defp read(database, key) do
-    case MemoryStore.get(database, key) do
+    case StoreServer.get(database, key) do
       {:ok, value} -> value
       {:error, :not_found} -> nil
     end
   end
 
-  defdelegate write(database, key, value), to: MemoryStore, as: :put
+  defdelegate write(database, key, value), to: StoreServer, as: :put
 
   defp delete(database, key) do
-    case MemoryStore.drop_key(database, key) do
+    case StoreServer.drop_key(database, key) do
       {:ok, value} -> value
       {:error, :not_found} -> nil
     end

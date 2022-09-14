@@ -7,7 +7,7 @@ defmodule Cim.Application do
   @impl true
   def start(_type, _args) do
     children = [
-      Cim.MemoryStore,
+      Cim.StoreServer,
       {Plug.Cowboy, scheme: :http, plug: CimWeb.Router, options: [port: port()]}
     ]
 
@@ -18,6 +18,17 @@ defmodule Cim.Application do
   end
 
   defp port() do
-    Application.get_env(:cim, :port) |> String.to_integer()
+    port =
+      Application.get_env(:cim, Cim.StoreServer)
+      |> Keyword.get(:port)
+
+    case Integer.parse(port) do
+      {port, ""} ->
+        port
+
+      _ ->
+        Logger.critical("Invalid port value: #{port}. Shutting down all applications")
+        exit({:shutdown, :invalid_port})
+    end
   end
 end

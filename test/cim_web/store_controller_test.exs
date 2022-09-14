@@ -4,7 +4,7 @@ defmodule CimWeb.StoreControllerTest do
   use Plug.Test
 
   alias CimWeb.Router
-  alias Cim.MemoryStore
+  alias Cim.StoreServer
 
   @opts Router.init([])
 
@@ -180,7 +180,7 @@ defmodule CimWeb.StoreControllerTest do
     key = unique_suffix("key")
     value = unique_suffix("value")
 
-    MemoryStore.put(db, key, value)
+    StoreServer.put(db, key, value)
     Logger.debug(test: ctx.test, db: db, key: key, value: value)
 
     {:ok, db: db, key: key, value: value}
