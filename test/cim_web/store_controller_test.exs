@@ -44,6 +44,29 @@ defmodule CimWeb.StoreControllerTest do
       assert %{state: :sent, status: 200, resp_body: ^value} = conn
       assert {"content-type", "application/octet-stream"} in conn.resp_headers
     end
+
+    test "inserts the value as given regardless of content type",
+         ctx do
+      cases = %{
+        "application/x-www-form-urlencoded" => "hello=world",
+        "text/plain" => "hello world",
+        "application/octet-stream" => <<"hello-world">>,
+        "application/json" => Jason.encode!(%{hello: "world"})
+      }
+
+      cases
+      |> Enum.each(fn {content_type, body} ->
+        key = unique_suffix("test_content_type")
+
+        conn = request(:put, to_path(ctx.db, key), body, content_type)
+        assert %{state: :sent, status: 200} = conn
+
+        conn = request(:get, to_path(ctx.db, key))
+        assert %{state: :sent, status: 200} = conn
+        assert conn.resp_body == body
+        assert {"content-type", "application/octet-stream"} in conn.resp_headers
+      end)
+    end
   end
 
   describe "GET /{database}/{key}" do
@@ -195,13 +218,19 @@ defmodule CimWeb.StoreControllerTest do
   defp request(:put, path, body) do
     :put
     |> conn(path, body)
-    |> put_req_header("content-type", "application/octet-stream")
     |> Router.call(@opts)
   end
 
   defp request(:post, path, body) do
     :post
     |> conn(path, body)
+    |> Router.call(@opts)
+  end
+
+  defp request(:put, path, body, content_type) do
+    :put
+    |> conn(path, body)
+    |> put_req_header("content-type", content_type)
     |> Router.call(@opts)
   end
 

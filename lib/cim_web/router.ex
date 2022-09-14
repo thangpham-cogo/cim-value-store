@@ -7,11 +7,6 @@ defmodule CimWeb.Router do
   plug(Plug.RequestId)
   plug(Plug.Logger)
 
-  plug(Plug.Parsers,
-    parsers: [:urlencoded, :multipart],
-    pass: ["*/*"]
-  )
-
   plug(:match)
   plug(:dispatch)
 
