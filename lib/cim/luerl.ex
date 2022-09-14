@@ -3,8 +3,7 @@ defmodule Cim.Luerl do
   Wrapper around erlang luerl to minimize its api surface & make piping easier
   """
 
-  # tuple of 13 elements
-  @opaque luerl_state :: {:luerl, any, any, any, any, any, any, any, any, any, any, any, any}
+  @type luerl_state :: any
   @type eval_response ::
           {:error, :syntax_error | {:internal_error, any} | {:runtime_error, any}} | {:ok, any}
 
@@ -17,16 +16,14 @@ defmodule Cim.Luerl do
   @doc """
   Stores a value in the lua's vm table. Returns the updated vm state
   """
-  @spec set_table(luerl_state, paths :: list(String.t()), any) :: luerl_state
-  def set_table({:luerl, _, _, _, _, _, _, _, _, _, _, _, _} = state, paths, value) do
-    :luerl.set_table(paths, value, state)
-  end
+  @spec set_table(luerl_state, paths :: list(String.t()), value :: any) :: luerl_state
+  def set_table(state, paths, value), do: :luerl.set_table(paths, value, state)
 
   @doc """
   Runs a script against the given vm state.
   """
   @spec eval(luerl_state, script :: binary) :: eval_response
-  def eval({:luerl, _, _, _, _, _, _, _, _, _, _, _, _} = state, script) do
+  def eval(state, script) do
     with {:ok, chunk, next_state} <- :luerl.load(script, state),
          {:ok, result} when is_list(result) <- :luerl.eval(chunk, next_state) do
       {:ok, unwrap(result)}
