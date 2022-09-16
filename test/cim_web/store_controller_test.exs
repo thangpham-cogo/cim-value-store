@@ -17,7 +17,7 @@ defmodule CimWeb.StoreControllerTest do
 
       conn = request(:get, to_path(ctx.db, "new_key"))
       assert %{state: :sent, status: 200, resp_body: "value"} = conn
-      assert {"content-type", "application/octet-stream"} in conn.resp_headers
+      assert_octet_stream_content_type(conn)
     end
 
     test "inserts a value under an existing database and key", ctx do
@@ -26,7 +26,7 @@ defmodule CimWeb.StoreControllerTest do
 
       conn = request(:get, to_path(ctx.db, ctx.key))
       assert %{state: :sent, status: 200, resp_body: "new_value"} = conn
-      assert {"content-type", "application/octet-stream"} in conn.resp_headers
+      assert_octet_stream_content_type(conn)
     end
 
     test "inserts a value under a new database and key" do
@@ -42,15 +42,15 @@ defmodule CimWeb.StoreControllerTest do
 
       conn = request(:get, to_path(new_db, key))
       assert %{state: :sent, status: 200, resp_body: ^value} = conn
-      assert {"content-type", "application/octet-stream"} in conn.resp_headers
+      assert_octet_stream_content_type(conn)
     end
 
     test "inserts the value as given regardless of content type",
          ctx do
       cases = %{
         "application/x-www-form-urlencoded" => "hello=world",
-        "text/plain" => "hello world",
-        "application/octet-stream" => <<"hello-world">>,
+        "text/plain; charset=utf-8" => "hello world",
+        "application/octet-stream; charset=utf-8" => <<"hello-world">>,
         "application/json" => Jason.encode!(%{hello: "world"})
       }
 
@@ -64,7 +64,7 @@ defmodule CimWeb.StoreControllerTest do
         conn = request(:get, to_path(ctx.db, key))
         assert %{state: :sent, status: 200} = conn
         assert conn.resp_body == body
-        assert {"content-type", "application/octet-stream"} in conn.resp_headers
+        assert_octet_stream_content_type(conn)
       end)
     end
   end
@@ -75,7 +75,7 @@ defmodule CimWeb.StoreControllerTest do
 
       assert %{state: :sent, status: 200} = conn
       assert conn.resp_body == ctx.value
-      assert {"content-type", "application/octet-stream"} in conn.resp_headers
+      assert_octet_stream_content_type(conn)
     end
 
     test "returns 404 if database or key not found", ctx do
@@ -133,8 +133,8 @@ defmodule CimWeb.StoreControllerTest do
     test "returns 200 with output for valid request", ctx do
       conn = request(:post, to_path(ctx.db), ~s|return "hello world"|)
 
-      assert %{state: :sent, status: 200, resp_body: ~s|"hello world"|} = conn
-      assert {"content-type", "application/octet-stream"} in conn.resp_headers
+      assert %{state: :sent, status: 200, resp_body: "hello world"} = conn
+      assert_octet_stream_content_type(conn)
     end
 
     test "returns 200 for valid multiline script", ctx do
@@ -147,22 +147,21 @@ defmodule CimWeb.StoreControllerTest do
 
       conn = request(:post, to_path(ctx.db), script)
 
-      assert %{state: :sent, status: 200, resp_body: ~s|"hello world"|} = conn
-      assert {"content-type", "application/octet-stream"} in conn.resp_headers
+      assert %{state: :sent, status: 200, resp_body: "hello world"} = conn
+      assert_octet_stream_content_type(conn)
     end
 
     test "returns 200 for valid script that uses cim store lua api", ctx do
       script = """
       cim.write("ef", 12)
       ef_value = cim.read("ef")
-      print(ef_value)
       return cim.delete("ef")
       """
 
       conn = request(:post, to_path(ctx.db), script)
 
       assert %{state: :sent, status: 200, resp_body: "12"} = conn
-      assert {"content-type", "application/octet-stream"} in conn.resp_headers
+      assert_octet_stream_content_type(conn)
     end
 
     test "can access value being set by a separate GET request", ctx do
@@ -174,7 +173,7 @@ defmodule CimWeb.StoreControllerTest do
       conn = request(:post, to_path(ctx.db), script)
 
       assert %{state: :sent, status: 200, resp_body: "120.0"} = conn
-      assert {"content-type", "application/octet-stream"} in conn.resp_headers
+      assert_octet_stream_content_type(conn)
     end
 
     test "returns 404 if database not found" do
@@ -187,14 +186,14 @@ defmodule CimWeb.StoreControllerTest do
       conn = request(:post, to_path(ctx.db), ~s|this is not valid lua syntax|)
 
       assert %{state: :sent, status: 400, resp_body: "invalid lua script"} = conn
-      assert {"content-type", "text/plain"} in conn.resp_headers
+      assert_text_plain_content_type(conn)
     end
 
     test "returns 400 error for script with runtime error", ctx do
       conn = request(:post, to_path(ctx.db), ~s|return unknown_func("foo")|)
 
       assert %{state: :sent, status: 400, resp_body: "invalid lua script"} = conn
-      assert {"content-type", "text/plain"} in conn.resp_headers
+      assert_text_plain_content_type(conn)
     end
   end
 
@@ -239,4 +238,12 @@ defmodule CimWeb.StoreControllerTest do
   defp to_path(parts), do: Enum.map_join(parts, &("/" <> &1))
 
   defp unique_suffix(str), do: "#{str}-#{System.unique_integer([:positive])}"
+
+  defp assert_octet_stream_content_type(conn) do
+    assert {"content-type", "application/octet-stream; charset=utf-8"} in conn.resp_headers
+  end
+
+  defp assert_text_plain_content_type(conn) do
+    assert {"content-type", "text/plain; charset=utf-8"} in conn.resp_headers
+  end
 end

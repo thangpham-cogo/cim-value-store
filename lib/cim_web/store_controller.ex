@@ -11,7 +11,7 @@ defmodule CimWeb.StoreController do
   def get(%{path_params: %{"database" => database, "key" => key}} = conn) do
     case StoreServer.get(database, key) do
       {:ok, value} ->
-        ok(conn, value)
+        ok(conn, stringify(value))
 
       {:error, :not_found} ->
         not_found(conn)
@@ -48,7 +48,7 @@ defmodule CimWeb.StoreController do
     with {:ok, script, conn} <- read_body(conn),
          true <- StoreServer.has_database?(database),
          {:ok, value} <- LuaInterpreter.eval(database, script) do
-      ok(conn, inspect(value))
+      ok(conn, stringify(value))
     else
       false ->
         not_found(conn)
@@ -66,15 +66,16 @@ defmodule CimWeb.StoreController do
 
   defp ok(conn, body) do
     conn
-    |> put_resp_header("content-type", "application/octet-stream")
-    |> send_resp(200, body)
+    |> put_resp_content_type("application/octet-stream")
+    |> send_resp(200, to_string(body))
   end
 
   defp bad_request(conn, err_message) do
     conn
-    |> put_resp_header("content-type", "text/plain")
+    |> put_resp_content_type("text/plain")
     |> send_resp(400, err_message)
   end
 
   defp not_found(conn), do: send_resp(conn, 404, "")
+  defp stringify(value), do: to_string(value)
 end
