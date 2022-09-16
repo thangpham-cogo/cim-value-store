@@ -54,6 +54,39 @@ defmodule Cim.LuaInterpreterTest do
 
       assert {:ok, -40.625} = LuaInterpreter.eval(ctx.db, script)
     end
+
+    test "returns nil as is", ctx do
+      script = ~s|return nil|
+
+      assert {:ok, nil} = LuaInterpreter.eval(ctx.db, script)
+    end
+
+    test "returns nil for empty return", ctx do
+      script = ~s|return|
+
+      assert {:ok, nil} = LuaInterpreter.eval(ctx.db, script)
+    end
+
+    test "returns boolean as is", ctx do
+      script = ~s|return true|
+      assert {:ok, true} = LuaInterpreter.eval(ctx.db, script)
+
+      script = ~s|return false|
+      assert {:ok, false} = LuaInterpreter.eval(ctx.db, script)
+    end
+
+    test "returns list of tuples for Lua table", ctx do
+      script = ~s|return {}|
+      assert {:ok, []} = LuaInterpreter.eval(ctx.db, script)
+
+      script = ~s|a = {} a.foo = "bar" a.bar = "foo" return a|
+      assert {:ok, [{"bar", "foo"}, {"foo", "bar"}]} = LuaInterpreter.eval(ctx.db, script)
+    end
+
+    test "returns syntax error for invalid script", ctx do
+      script = ~s|a = []|
+      assert {:error, :syntax_error} = LuaInterpreter.eval(ctx.db, script)
+    end
   end
 
   describe "cim.read/1" do
@@ -72,24 +105,27 @@ defmodule Cim.LuaInterpreterTest do
 
   describe "cim.write/2" do
     test "returns ok if writing to key succeeds", ctx do
-      key = "new_key"
-      value = "value"
-
-      script = ~s|return cim.write("#{key}", "#{value}")|
+      script = ~s|return cim.write("new_key", "value")|
 
       assert {:ok, "ok"} = LuaInterpreter.eval(ctx.db, script)
     end
 
     test "written data can be retrieved later in script", ctx do
-      key = "new_key"
-      value = "value"
-
       script = """
-      cim.write("#{key}", "#{value}")
-      return cim.read("#{key}")
+      cim.write("new_key", "value")
+      return cim.read("new_key")
       """
 
-      assert {:ok, ^value} = LuaInterpreter.eval(ctx.db, script)
+      assert {:ok, "value"} = LuaInterpreter.eval(ctx.db, script)
+    end
+
+    test "writes string value into the key", ctx do
+      script = """
+      cim.write("new_key", 12)
+      return type(cim.read("new_key"))
+      """
+
+      assert {:ok, "string"} == LuaInterpreter.eval(ctx.db, script)
     end
   end
 

@@ -43,6 +43,6 @@ defmodule Cim.Luerl do
     end
   end
 
-  defp unwrap([]), do: ""
+  defp unwrap([]), do: nil
   defp unwrap([result]), do: result
 end
